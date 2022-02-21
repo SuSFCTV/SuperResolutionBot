@@ -1,16 +1,7 @@
-"""
-Super-resolution of CelebA using Generative Adversarial Networks.
-The dataset can be downloaded from: https://www.dropbox.com/sh/8oqt9vytwxb3s4r/AADIKlz8PR9zr6Y20qbkunrba/Img/img_align_celeba.zip?dl=0
-(if not available there see if options are listed at http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html)
-Instrustion on running the script:
-1. Download the dataset from the provided link
-2. Save the folder 'img_align_celeba' to '../../data/'
-4. Run the sript using command 'python3 srgan.py'
-"""
-
 import argparse
 import os
 import sys
+
 
 from torchvision.utils import save_image, make_grid
 
@@ -74,13 +65,13 @@ if opt.epoch != 0:
     discriminator.load_state_dict(torch.load("saved_models/discriminator_%d.pth"))
 
 # Optimizers
-optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+optimizer_generator = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+optimizer_discriminator = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
 dataloader = DataLoader(
-    ImageDataset("data/img_align_celeba", hr_shape=hr_shape),
+    ImageDataset("srgan_model/data/img_align_celeba", hr_shape=hr_shape),
     batch_size=opt.batch_size,
     shuffle=True,
     num_workers=opt.n_cpu,
@@ -94,21 +85,21 @@ for epoch in range(opt.epoch, opt.n_epochs):
     for i, imgs in enumerate(dataloader):
 
         # Configure model input
-        imgs_lr = Variable(imgs["lr"].type(Tensor))
+        images_lr = Variable(imgs["lr"].type(Tensor))
         imgs_hr = Variable(imgs["hr"].type(Tensor))
 
         # Adversarial ground truths
-        valid = Variable(Tensor(np.ones((imgs_lr.size(0), *discriminator.output_shape))), requires_grad=False)
-        fake = Variable(Tensor(np.zeros((imgs_lr.size(0), *discriminator.output_shape))), requires_grad=False)
+        valid = Variable(Tensor(np.ones((images_lr.size(0), *discriminator.output_shape))), requires_grad=False)
+        fake = Variable(Tensor(np.zeros((images_lr.size(0), *discriminator.output_shape))), requires_grad=False)
 
         # ------------------
-        #  Train Generators
+        #  Train Generator
         # ------------------
 
-        optimizer_G.zero_grad()
+        optimizer_generator.zero_grad()
 
         # Generate a high resolution image from low resolution input
-        gen_hr = generator(imgs_lr)
+        gen_hr = generator(images_lr)
 
         # Adversarial loss
         loss_GAN = criterion_GAN(discriminator(gen_hr), valid)
@@ -122,13 +113,13 @@ for epoch in range(opt.epoch, opt.n_epochs):
         loss_G = loss_content + 1e-3 * loss_GAN
 
         loss_G.backward()
-        optimizer_G.step()
+        optimizer_generator.step()
 
         # ---------------------
         #  Train Discriminator
         # ---------------------
 
-        optimizer_D.zero_grad()
+        optimizer_discriminator.zero_grad()
 
         # Loss of real and fake images
         loss_real = criterion_GAN(discriminator(imgs_hr), valid)
@@ -138,7 +129,7 @@ for epoch in range(opt.epoch, opt.n_epochs):
         loss_D = (loss_real + loss_fake) / 2
 
         loss_D.backward()
-        optimizer_D.step()
+        optimizer_discriminator.step()
 
         # --------------
         #  Log Progress
@@ -152,13 +143,13 @@ for epoch in range(opt.epoch, opt.n_epochs):
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
             # Save image grid with upsampled inputs and SRGAN outputs
-            imgs_lr = nn.functional.interpolate(imgs_lr, scale_factor=4)
+            images_lr = nn.functional.interpolate(images_lr, scale_factor=4)
             gen_hr = make_grid(gen_hr, nrow=1, normalize=True)
-            imgs_lr = make_grid(imgs_lr, nrow=1, normalize=True)
-            img_grid = torch.cat((imgs_lr, gen_hr), -1)
+            images_lr = make_grid(images_lr, nrow=1, normalize=True)
+            img_grid = torch.cat((images_lr, gen_hr), -1)
             save_image(img_grid, "images/%d.png" % batches_done, normalize=False)
 
-    if opt.checkpoint_interval != -1 and epoch % opt.checkpoint_interval == 0:
+    if opt.checkpoint_interval != -1 and epoch % opt.checkpoint_interval == 5:
         # Save model checkpoints
         torch.save(generator.state_dict(), "saved_models/generator_%d.pth" % epoch)
         torch.save(discriminator.state_dict(), "saved_models/discriminator_%d.pth" % epoch)

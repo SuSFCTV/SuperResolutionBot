@@ -1,8 +1,8 @@
+from typing import List
+
 import torch.nn as nn
-import torch.nn.functional as F
 import torch
 from torchvision.models import vgg19
-import math
 
 
 class FeatureExtractor(nn.Module):
@@ -16,7 +16,7 @@ class FeatureExtractor(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_features):
+    def __init__(self, in_features: int):
         super(ResidualBlock, self).__init__()
         self.conv_block = nn.Sequential(
             nn.Conv2d(in_features, in_features, kernel_size=3, stride=1, padding=1),
@@ -31,7 +31,7 @@ class ResidualBlock(nn.Module):
 
 
 class GeneratorResNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3, n_residual_blocks=16):
+    def __init__(self, in_channels: int = 3, out_channels: int = 3, n_residual_blocks: int = 16):
         super(GeneratorResNet, self).__init__()
 
         # First layer
@@ -80,7 +80,7 @@ class Discriminator(nn.Module):
         patch_h, patch_w = int(in_height / 2 ** 4), int(in_width / 2 ** 4)
         self.output_shape = (1, patch_h, patch_w)
 
-        def discriminator_block(in_filters, out_filters, first_block=False):
+        def discriminator_block(in_filters, out_filters, first_block=False) -> List:
             layers = []
             layers.append(nn.Conv2d(in_filters, out_filters, kernel_size=3, stride=1, padding=1))
             if not first_block:

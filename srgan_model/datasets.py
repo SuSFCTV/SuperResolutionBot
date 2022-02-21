@@ -4,13 +4,13 @@ from torch.utils.data import Dataset
 from PIL import Image
 import torchvision.transforms as transforms
 
-# Normalization parameters for pre-trained PyTorch models
+# Normalization parameters for pre-trained models
 mean = np.array([0.485, 0.456, 0.406])
 std = np.array([0.229, 0.224, 0.225])
 
 
 class ImageDataset(Dataset):
-    def __init__(self, root, hr_shape):
+    def __init__(self, root: str, hr_shape: tuple[int, int]):
         hr_height, hr_width = hr_shape
         # Transforms for low resolution images and high resolution images
         self.lr_transform = transforms.Compose(
@@ -30,12 +30,12 @@ class ImageDataset(Dataset):
 
         self.files = sorted(glob.glob(root + "/*.*"))
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> dict:
         img = Image.open(self.files[index % len(self.files)])
         img_lr = self.lr_transform(img)
         img_hr = self.hr_transform(img)
 
         return {"lr": img_lr, "hr": img_hr}
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.files)
